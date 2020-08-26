@@ -1,0 +1,1 @@
+# edge-ai-resource-monitoring-deployment
