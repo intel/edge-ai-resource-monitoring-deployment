@@ -1,0 +1,30 @@
+FROM ubuntu:20.04 as builder
+
+ENV PROMETHEUS=prometheus-2.22.0.linux-arm64
+ENV PROMETHEUS_TAR=${PROMETHEUS}.tar.gz
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y \
+    wget
+
+RUN \
+wget https://github.com/prometheus/prometheus/releases/download/v2.22.0/${PROMETHEUS_TAR} && \
+tar -xvf ${PROMETHEUS_TAR}
+
+
+FROM ubuntu:20.04
+
+ENV PROMETHEUS=prometheus-2.22.0.linux-arm64
+
+RUN apt-get update && \
+    apt-get install -y nginx apache2-utils \
+    busybox curl bash
+
+COPY --from=builder /${PROMETHEUS}/ /prometheus
+COPY prometheus-server.yml /prometheus/prometheus-server.yml
+COPY default.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/nginx.conf
+
+
