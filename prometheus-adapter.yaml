@@ -1,4 +1,33 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server-config
+  namespace: default
+data:
+  prometheus.config: |
+    apiVersion: v1
+    clusters:
+    - cluster:
+        certificate-authority: /etc/prometheus-server/server.crt
+        insecure-skip-tls-verify: false
+        server: https://prometheus-svc.default.svc:9090
+      name: default
+    contexts:
+    - context:
+        cluster: default
+        namespace: default
+        user: default
+      name: default
+    current-context: default
+    kind: Config
+    preferences: {}
+    users:
+    - name: default
+      user:
+        client-certificate: /etc/prometheus-server/server.crt
+        client-key: /etc/prometheus-server/server.key
+---
+apiVersion: v1
 kind: Secret
 metadata:
   name: cm-adapter-serving-certs
@@ -171,9 +200,11 @@ spec:
         #- --v=8
         - --metrics-relist-interval=1m
         - --prometheus-url=https://prometheus-svc.default.svc:9090/
-        - --prometheus-ca-file=/etc/prometheus-server/ca.crt
-        - --prometheus-token-file=/etc/prometheus-server/token
+        #- --prometheus-ca-file=/etc/prometheus-server/ca.crt
+        #- --prometheus-token-file=/etc/prometheus-server/token
         - --secure-port=6443
+        - --prometheus-auth-config=/etc/prometheus-config/prometheus.config
+        - --prometheus-auth-incluster=false
         image: directxman12/k8s-prometheus-adapter:v0.7.0
         name: prometheus-adapter
         ports:
@@ -190,6 +221,9 @@ spec:
           readOnly: false
         - mountPath: /etc/prometheus-server
           name: prometheus-keys
+        - mountPath: /etc/prometheus-config/prometheus.config
+          name: prometheus-config
+          subPath: prometheus.config
       volumes:
       - emptyDir: {}
         name: tmpfs
@@ -199,6 +233,9 @@ spec:
       - configMap:
           name: adapter-config
         name: config
+      - configMap:
+          name: prometheus-server-config
+        name: prometheus-config
       - name: prometheus-keys
         secret:
           secretName: prometheus-certs
